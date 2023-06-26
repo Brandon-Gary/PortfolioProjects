@@ -1,0 +1,94 @@
+--Writing queries to create visualizations with COVID-19 patient data--
+
+--First Visualization--
+select DISTINCT description, COUNT(description) OVER (PARTITION BY description) as Total_COVID_Patients
+FROM encounters
+WHERE description <> 'Death Certification' AND reasondescription = 'Covid-19'
+
+--Second Visualization--
+SELECT patients.id,
+		(CASE WHEN DEATHDATE IS NOT NULL THEN DATEDIFF(YYYY, birthdate, deathdate) END)
+		as Age,
+		gender, description, reasondescription
+FROM patients
+INNER JOIN encounters
+	ON patients.id = encounters.patient
+WHERE description = 'Death Certification' AND reasondescription = 'COVID-19'
+
+--Third Visualization--
+select DISTINCT description, reasondescription, deathdate, (COUNT(description) OVER (PARTITION BY deathdate)) as DeathsByDay
+FROM encounters
+INNER JOIN patients
+	ON encounters.patient = patients.Id
+WHERE description = 'Death Certification' AND reasondescription = 'COVID-19'
+
+--Fourth Visualization--
+--Received any medication during COVID--
+
+select medications.patient, DATEDIFF(DD, conditions.start, conditions.stop) as Covid_Length
+from Medications
+INNER JOIN conditions
+	ON medications.patient = conditions.patient
+where medications.REASONDESCRIPTION = 'covid-19' AND conditions.description = 'COVID-19'
+
+--Received any device during COVID--
+SELECT DISTINCT devices.patient, DATEDIFF(DD, conditions.start, conditions.stop) as Covid_Length
+from devices
+INNER JOIN conditions
+	ON devices.patient = conditions.patient
+WHERE conditions.DESCRIPTION = 'COVID-19' AND devices.start BETWEEN conditions.start AND conditions.stop
+
+
+
+
+--Fifth Visualization--
+SELECT COUNT(con.patient) as totalpatients_medications
+FROM Conditions con
+INNER JOIN Medications meds
+	ON meds.patient = con.patient
+WHERE con.description = 'COVID-19' AND meds.reasondescription = 'COVID-19'
+
+SELECT COUNT(conditions.patient) as totalpatients_devices
+from devices
+INNER JOIN conditions
+	ON devices.patient = conditions.patient
+WHERE conditions.description = 'COVID-19' AND devices.start BETWEEN conditions.start AND conditions.stop
+
+select COUNT(patient) as totalpatients_procedures
+from procedures
+WHERE reasondescription = 'COVID-19'
+
+
+
+--I simply copy/pasted these tables into Excel to create a pie chart to display treatment percentages of all COVID patients who received treatment--
+
+
+--Multiple Linear Regression Table--
+select DISTINCT (CASE WHEN gender = 'F' THEN 1 WHEN gender = 'M' THEN 0 END) as MLR_Gender, 
+		(DATEDIFF(YYYY, BIRTHDATE, con.START)) as MLR_Age,
+		(CASE WHEN pat.ethnicity = 'hispanic' THEN 1 ELSE 0 END) as MLR_Hispanic,
+		(CASE WHEN pat.race = 'asian' THEN 1
+			  WHEN pat.race = 'black' THEN 2
+			  WHEN pat.race = 'native' THEN 3
+			  WHEN pat.race = 'other' THEN 4
+			  WHEN pat.race = 'white' THEN 5 END) as MLR_Race,
+		(CASE WHEN pat.marital = 'M' THEN 1 ELSE 0 END) as MLR_Married,
+		(CASE WHEN devices.description IS NOT NULL THEN 1 ELSE 0 END) as MLR_Device,
+		(CASE WHEN medications.reasondescription = 'COVID-19' THEN 1 ELSE 0 END) as MLR_Meds,
+		(CASE WHEN body.value > 30 THEN 1 ELSE 0 END) as MLR_Obese,
+		(DENSE_RANK() OVER (ORDER BY con.patient)) as MLR_RECORD,
+		DATEDIFF(DD, con.start, con.stop) as MLR_COVID_Duration,
+		pat.id
+FROM patients pat
+INNER JOIN conditions con
+	ON pat.id = con.patient
+FULL OUTER JOIN devices
+	ON devices.patient = pat.id
+INNER JOIN Medications
+	ON Medications.patient = pat.id
+FULL OUTER JOIN body
+	ON body.patient = pat.id
+WHERE con.description = 'COVID-19'
+ORDER BY pat.id 
+
+--MLR was conducted in Excel to estimate hospital stay duration in COVID patients based on specified criteria--
