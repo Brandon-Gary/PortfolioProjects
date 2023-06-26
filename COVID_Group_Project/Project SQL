@@ -1,11 +1,11 @@
 --Writing queries to create visualizations with COVID-19 patient data--
 
---First Visualization--
+--First Visualization (Bubble Chart)--
 select DISTINCT description, COUNT(description) OVER (PARTITION BY description) as Total_COVID_Patients
 FROM encounters
 WHERE description <> 'Death Certification' AND reasondescription = 'Covid-19'
 
---Second Visualization--
+--Second Visualization (Histogram)--
 SELECT patients.id,
 		(CASE WHEN DEATHDATE IS NOT NULL THEN DATEDIFF(YYYY, birthdate, deathdate) END)
 		as Age,
@@ -15,16 +15,10 @@ INNER JOIN encounters
 	ON patients.id = encounters.patient
 WHERE description = 'Death Certification' AND reasondescription = 'COVID-19'
 
---Third Visualization--
-select DISTINCT description, reasondescription, deathdate, (COUNT(description) OVER (PARTITION BY deathdate)) as DeathsByDay
-FROM encounters
-INNER JOIN patients
-	ON encounters.patient = patients.Id
-WHERE description = 'Death Certification' AND reasondescription = 'COVID-19'
 
---Fourth Visualization--
+--Third Visualization (Box Plot)--
+
 --Received any medication during COVID--
-
 select medications.patient, DATEDIFF(DD, conditions.start, conditions.stop) as Covid_Length
 from Medications
 INNER JOIN conditions
@@ -38,10 +32,10 @@ INNER JOIN conditions
 	ON devices.patient = conditions.patient
 WHERE conditions.DESCRIPTION = 'COVID-19' AND devices.start BETWEEN conditions.start AND conditions.stop
 
+--Exported these tables into Excel to create a box plot of COVID duration based on device or medication treatment--
 
 
-
---Fifth Visualization--
+--Fourth Visualization (Pie Chart)--
 SELECT COUNT(con.patient) as totalpatients_medications
 FROM Conditions con
 INNER JOIN Medications meds
@@ -59,8 +53,7 @@ from procedures
 WHERE reasondescription = 'COVID-19'
 
 
-
---I simply copy/pasted these tables into Excel to create a pie chart to display treatment percentages of all COVID patients who received treatment--
+--Copy/Pasted these tables into Excel to create a pie chart to display treatment percentages of all COVID patients who received treatment--
 
 
 --Multiple Linear Regression Table--
@@ -92,3 +85,6 @@ WHERE con.description = 'COVID-19'
 ORDER BY pat.id 
 
 --MLR was conducted in Excel to estimate hospital stay duration in COVID patients based on specified criteria--
+
+
+
