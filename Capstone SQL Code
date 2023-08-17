@@ -1,0 +1,26 @@
+--Risk Adjustment Model Estimate vs Actual Expenditure at the State Level--
+WITH cte as 
+(
+SELECT state_name, AvgCost, (AvgRisk*10402.23) as Estimate
+FROM (
+select State_name, State_id, AVG(per_capita_exp_ESRD) as AvgCost, AVG(avg_risk_score_ESRD) as AvgRisk
+from risk
+GROUP BY state_name, state_id ) as sub
+)
+SELECT state_name, ROUND((Estimate/AvgCost)*100,2) as Percent_Diff
+FROM cte
+
+
+--Risk Adjustment Model Estimate vs Actual Expenditure. County Population Data is Included--
+WITH cte AS
+(
+select state_name, county_name, pop_estimate_2021, avg_risk_score_ESRD, per_capita_exp_ESRD, ROUND((avg_risk_score_ESRD*10402.34),2) as Estimate
+FROM risk
+INNER JOIN population
+	ON risk.ID = population.ID
+WHERE avg_risk_score_ESRD IS NOT NULL
+)
+SELECT state_name, county_name, pop_estimate_2021, avg_risk_score_ESRD, per_capita_exp_ESRD, Estimate, (Estimate/Per_Capita_Exp_ESRD)*100 as Percent_of_Exp
+FROM cte
+WHERE pop_estimate_2021 IS NOT NULL
+ORDER BY Percent_of_Exp desc
